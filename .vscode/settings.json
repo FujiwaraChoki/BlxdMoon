@@ -1,7 +1,0 @@
-{
-  "files.associations": {
-    "windowsx.h": "c",
-    "stat.h": "c",
-    "types.h": "c"
-  }
-}
