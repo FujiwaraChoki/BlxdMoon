@@ -11,7 +11,7 @@
 
 - [x] Connection to a custom-set server
 - [x] Receive commands from server, execute them and send back results
-- [ ] Persistence (in development)
+- [x] Persistence (in development)
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
 - [ ] Keylogger functionality (in development)
@@ -43,6 +43,13 @@ And to run the backdoor, execute bin/backdoor.exe:
 ```bash
 bin/backdoor.exe
 ```
+
+## Commands
+
+| Command   | Description                  |
+| --------- | ---------------------------- |
+| `cd`      | Change directory             |
+| `persist` | Make the backdoor persistent |
 
 ## License
 
