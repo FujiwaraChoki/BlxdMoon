@@ -11,11 +11,11 @@
 
 - [x] Connection to a custom-set server
 - [x] Receive commands from server, execute them and send back results
-- [] Automatically start program, when machine is re-booted
+- [ ] Automatically start program, when machine is re-booted
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
-- [] Keylogger functionality (in development)
-- [] Persistence (in development)
+- [ ] Keylogger functionality (in development)
+- [ ] Persistence (in development)
 
 ## Compilation
 
