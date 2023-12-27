@@ -1,8 +1,0 @@
-{
-  "files.associations": {
-    "windowsx.h": "c",
-    "stat.h": "c",
-    "types.h": "c",
-    "str_cut.h": "c"
-  }
-}
