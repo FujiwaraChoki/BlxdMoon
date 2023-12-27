@@ -11,10 +11,10 @@
 
 - [x] Connection to a custom-set server
 - [x] Receive commands from server, execute them and send back results
-- [x] Persistence (in development)
+- [x] Persistence
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
-- [ ] Keylogger functionality (in development)
+- [x] Keylogger functionality
 
 ## Compilation
 
@@ -46,10 +46,11 @@ bin/backdoor.exe
 
 ## Commands
 
-| Command   | Description                  |
-| --------- | ---------------------------- |
-| `cd`      | Change directory             |
-| `persist` | Make the backdoor persistent |
+| Command           | Description                                                          |
+| ----------------- | -------------------------------------------------------------------- |
+| `cd`              | Change directory                                                     |
+| `persist`         | Make the backdoor persistent                                         |
+| `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory |
 
 ## License
 
