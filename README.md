@@ -9,12 +9,13 @@
 
 ## Features
 
-1. Connection to a custom-set server
-2. Receive commands from server, execute them and send back results
-3. Automatically start program, when machine is re-booted
-4. Start/Spawn other programs
-5. Navigate through the file system
-6. Keylogger functionality (in development)
+- [x] Connection to a custom-set server
+- [x] Receive commands from server, execute them and send back results
+- [] Automatically start program, when machine is re-booted
+- [x] Start/Spawn other programs
+- [x] Navigate through the file system
+- [] Keylogger functionality (in development)
+- [] Persistence (in development)
 
 ## Compilation
 
