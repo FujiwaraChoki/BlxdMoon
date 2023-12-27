@@ -15,6 +15,7 @@
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
 - [x] Keylogger functionality
+- [ ] Obfuscation (in progress)
 
 ## Compilation
 
