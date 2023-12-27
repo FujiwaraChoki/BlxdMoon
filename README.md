@@ -9,12 +9,12 @@
 
 ## Features
 
-1. Connection with server (Inside main function)
-2. Create a shell function to listen for incoming commands from the server, and iterate over certain options
+1. Connection to a custom-set server
+2. Receive commands from server, execute them and send back results
 3. Automatically start program, when machine is re-booted
 4. Start/Spawn other programs
 5. Navigate through the file system
-6. Implement Keylogger in our backdoor
+6. Keylogger functionality (in development)
 
 ## Compilation
 
