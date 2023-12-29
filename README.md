@@ -17,6 +17,7 @@
 - [x] Keylogger functionality
 - [x] For Obfuscation, see [Obfuscation](#Obfuscation)
 - [x] Take screenshots
+- [ ] Download files from victim's computer
 
 ## Compilation
 
