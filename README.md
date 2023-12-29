@@ -19,7 +19,8 @@
 - [x] Keylogger functionality
 - [x] For Obfuscation, see [Obfuscation](Obfuscation.md)
 - [x] Take screenshots
-- [x] Download files from victim's computer (in progress)
+- [x] Download files from victim's computer
+- [ ] Upload files to victim's computer (in progress)
 
 ## Compilation
 
