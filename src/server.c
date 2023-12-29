@@ -42,7 +42,7 @@ int main()
   // Bind Server IP & Port
   bind(sock, (struct sockaddr *)&server_address, sizeof(server_address));
 
-  info("Listening for incoming requests...");
+  info("[*] Listening for incoming connections...");
 
   // Listen for incoming connections
   listen(sock, 5);
