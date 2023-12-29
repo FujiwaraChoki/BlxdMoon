@@ -51,10 +51,11 @@ bin/backdoor.exe
 
 | Command           | Description                                                                                      |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
-| `cd`              | Change directory                                                                                 |
+| `cd {DIR_NAME}`   | Change directory                                                                                 |
 | `persist`         | Make the backdoor persistent                                                                     |
 | `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory                             |
 | `screen`          | Take a screenshot of the current screen, writes to random {UUID}.txt in `Temp/screens` Directory |
+| `download {FILE}` | Download a file from the victim's computer                                                       |
 
 ## License
 
