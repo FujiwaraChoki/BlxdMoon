@@ -15,7 +15,7 @@
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
 - [x] Keylogger functionality
-- [x] For Obfuscation, see [Obfuscation](#Obfuscation)
+- [x] For Obfuscation, see [Obfuscation](Obfuscation.md)
 - [x] Take screenshots
 - [x] Download files from victim's computer (in progress)
 
