@@ -1,11 +1,13 @@
 # BlxdMoon
 
-> 📌 **Make sure to set correct IP Addresses & Ports in server.c and backdoor.c.**
+> 🐀 **A RAT-System built in C, with persistence and multiple features.**
 
 ![Stars](https://img.shields.io/github/stars/FujiwaraChoki/BlxdMoon.svg)
 ![License](https://img.shields.io/github/license/FujiwaraChoki/BlxdMoon.svg)
 
 [![BlxdMoon](repo/banner.png)](repo/banner.png)
+
+> ⚠️ **Make sure to set correct IP Addresses & Ports in server.c and backdoor.c.**
 
 ## Features
 
