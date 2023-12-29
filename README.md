@@ -17,7 +17,7 @@
 - [x] Keylogger functionality
 - [x] For Obfuscation, see [Obfuscation](#Obfuscation)
 - [x] Take screenshots
-- [ ] Download files from victim's computer
+- [ ] Download files from victim's computer (in progress)
 
 ## Compilation
 
@@ -49,12 +49,12 @@ bin/backdoor.exe
 
 ## Commands
 
-| Command           | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| `cd`              | Change directory                                                     |
-| `persist`         | Make the backdoor persistent                                         |
-| `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory |
-| `screen`          | Take a screenshot of the current screen                              |
+| Command           | Description                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `cd`              | Change directory                                                                                 |
+| `persist`         | Make the backdoor persistent                                                                     |
+| `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory                             |
+| `screen`          | Take a screenshot of the current screen, writes to random {UUID}.txt in `Temp/screens` Directory |
 
 ## License
 
