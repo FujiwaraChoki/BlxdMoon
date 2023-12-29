@@ -4,7 +4,7 @@
 
 void success(const char *msg)
 {
-  printf("\033[1;32m%s\033[0m\n", msg);
+  printf("\033[1;32m%s\033[0m", msg);
 }
 
 void error(const char *msg)
