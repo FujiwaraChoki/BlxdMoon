@@ -15,7 +15,8 @@
 - [x] Start/Spawn other programs
 - [x] Navigate through the file system
 - [x] Keylogger functionality
-- [ ] Obfuscation (in progress)
+- [x] For Obfuscation, see [Obfuscation](#Obfuscation)
+- [ ] Take screenshots
 
 ## Compilation
 
@@ -52,6 +53,7 @@ bin/backdoor.exe
 | `cd`              | Change directory                                                     |
 | `persist`         | Make the backdoor persistent                                         |
 | `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory |
+| `screen`          | Take a screenshot of the current screen                              |
 
 ## License
 
