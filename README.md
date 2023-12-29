@@ -23,6 +23,18 @@
 
 ## Compilation
 
+### Automatically
+
+Run the `setup.sh` file, with two supplied arguments:
+
+```bash
+./setup.sh {SERVER_IP} {SERVER_PORT}
+```
+
+It will save the binaries in the `bin` directory.
+
+### Manually
+
 Server:
 
 ```bash
