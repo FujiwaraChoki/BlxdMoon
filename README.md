@@ -29,7 +29,7 @@ gcc src/server.c -lws2_32 -o bin/server.exe
 Backdoor:
 
 ```bash
-gcc src/backdoor.c -lws2_32 -o bin/backdoor.exe
+gcc src/backdoor.c -o bin/backdoor.exe -lws2_32 -lgdi32
 ```
 
 ## Usage
