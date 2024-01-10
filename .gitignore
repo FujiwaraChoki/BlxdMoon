@@ -1,3 +1,4 @@
 bin/*
 .vscode
 *.py
+.history
