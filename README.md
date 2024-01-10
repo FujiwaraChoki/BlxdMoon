@@ -21,7 +21,7 @@
 - [x] Take screenshots
 - [x] Download files from victim's computer
 - [x] Upload files to victim's computer
-- [ ] Get Device Information (incl. Location) (in progress)
+- [x] Get Device Information
 
 ## Compilation
 

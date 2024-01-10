@@ -7,10 +7,32 @@
 #include <string.h>
 #include <winsock2.h>
 
+// If using clang
+// #define _CRT_SECURE_NO_DEPRECATE
+// #define _CRT_SECURE_NO_WARNINGS
+
 #define bzero(p, size) (void)memset((p), 0, (size))
+
+/*
+Prints out `BlxdMoon` in ASCII Art in red color.
+*/
+void printAsciiArt()
+{
+  printf("\033[0;31m"
+         "  ____  _         _ __  __                   \n"
+         " |  _ \\| |       | |  \\/  |                  \n"
+         " | |_) | |_  ____| | \\  / | ___   ___  _ __  \n"
+         " |  _ <| \\ \\/ / _` | |\\/| |/ _ \\ / _ \\| '_ \\ \n"
+         " | |_) | |>  < (_| | |  | | (_) | (_) | | | |\n"
+         " |____/|_/_/\\_\\__,_|_|  |_|\\___/ \\___/|_| |_|\n"
+         "\033[0m");
+}
 
 int main()
 {
+  // Print ASCII Art
+  printAsciiArt();
+
   // Define variables
   int sock, client_socket;
   char buffer[1024];
