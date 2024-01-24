@@ -72,6 +72,8 @@ bin/backdoor.exe
 | `keylogger:start` | Start the keylogger, writes to random {UUID}.txt in `Temp` Directory                             |
 | `screen`          | Take a screenshot of the current screen, writes to random {UUID}.txt in `Temp/screens` Directory |
 | `download {FILE}` | Download a file from the victim's computer                                                       |
+| `upload {FILE}`   | Upload a file from server to victim's computer                                                   |
+
 
 ## License
 
