@@ -61,7 +61,7 @@ int main()
 
   // Set Socket config
   server_address.sin_family = AF_INET;
-  server_address.sin_addr.s_addr = inet_addr("192.168.1.21");
+  server_address.sin_addr.s_addr = inet_addr("0.0.0.0");
   server_address.sin_port = htons(6709);
 
   // Bind Server IP & Port

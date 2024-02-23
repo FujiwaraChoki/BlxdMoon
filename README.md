@@ -27,13 +27,22 @@
 
 ### Automatically
 
-Run the `setup.sh` file, with two supplied arguments:
+Run the `configure.sh` file, with two supplied arguments:
 
 ```bash
-./setup.sh {SERVER_IP} {SERVER_PORT}
+./configure.sh {SERVER_IP} {SERVER_PORT}
 ```
 
-It will save the binaries in the `bin` directory.
+Then, use CMake to compile the project:
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
+It will save the binaries in the `build` directory.
 
 ### Manually
 
@@ -73,7 +82,6 @@ bin/backdoor.exe
 | `screen`          | Take a screenshot of the current screen, writes to random {UUID}.txt in `Temp/screens` Directory |
 | `download {FILE}` | Download a file from the victim's computer                                                       |
 | `upload {FILE}`   | Upload a file from server to victim's computer                                                   |
-
 
 ## License
 

