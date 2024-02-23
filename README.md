@@ -25,7 +25,7 @@
 
 ## Compilation
 
-### Automatically
+### CMake
 
 Run the `configure.sh` file, with two supplied arguments:
 
@@ -44,18 +44,26 @@ make
 
 It will save the binaries in the `build` directory.
 
-### Manually
+### Manual Compilation
+
+Replace all IP Addresses and Ports in `src/server.c` and `src/backdoor.c` with your own.
+
+Create a build directory:
+
+```bash
+mkdir build
+```
 
 Server:
 
 ```bash
-gcc src/server.c -o bin/server.exe -lws2_32
+gcc src/server.c -o build/server.exe -lws2_32
 ```
 
 Backdoor:
 
 ```bash
-gcc src/backdoor.c -o bin/backdoor.exe -lws2_32 -lgdi32
+gcc src/backdoor.c -o build/backdoor.exe -lws2_32 -lgdi32
 ```
 
 ## Usage
@@ -63,13 +71,13 @@ gcc src/backdoor.c -o bin/backdoor.exe -lws2_32 -lgdi32
 To run the server, simply execute bin/server.exe:
 
 ```bash
-bin/server.exe
+build/server.exe
 ```
 
 And to run the backdoor, execute bin/backdoor.exe:
 
 ```bash
-bin/backdoor.exe
+build/backdoor.exe
 ```
 
 ## Commands
