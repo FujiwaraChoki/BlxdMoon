@@ -22,7 +22,7 @@
 - [x] Download files from victim's computer
 - [x] Upload files to victim's computer
 - [x] Get Device Information
-- [ ] Wake on LAN
+- [ ] Wake on LAN (Currently only enables WOL, not sending the magic packet)
 
 ## Compilation
 
