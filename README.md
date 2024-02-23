@@ -22,6 +22,7 @@
 - [x] Download files from victim's computer
 - [x] Upload files to victim's computer
 - [x] Get Device Information
+- [ ] Wake on LAN
 
 ## Compilation
 
