@@ -1,8 +1,3 @@
-#include "status.h"
-#include "logger.h"
-#include "screen.h"
-#include "str_cut.h"
-
 #include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +8,11 @@
 #include <windowsx.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include "status.h"
+#include "logger.h"
+#include "screen.h"
+#include "str_cut.h"
 
 // Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 
