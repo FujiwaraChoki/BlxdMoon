@@ -310,6 +310,7 @@ int EstablishConnection(const char *ServerIp, unsigned short ServerPort)
   return 0; // Connection established successfully
 }
 
+// Receive the magic packet
 void WOL()
 {
   // Use PowerShell to enable WOL
