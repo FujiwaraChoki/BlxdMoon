@@ -22,7 +22,7 @@
 - [x] Download files from victim's computer
 - [x] Upload files to victim's computer
 - [x] Get Device Information
-- [ ] Wake on LAN (Currently only enables WOL, not sending the magic packet)
+- [x] Wake on LAN (Multi-vendor enablement + magic packet sending)
 
 ## Compilation
 
@@ -91,6 +91,7 @@ build/backdoor.exe
 | `screen`          | Take a screenshot of the current screen, writes to random {UUID}.txt in `Temp/screens` Directory |
 | `download {FILE}` | Download a file from the victim's computer                                                       |
 | `upload {FILE}`   | Upload a file from server to victim's computer                                                   |
+| `wol:{MAC}`       | Send Wake on LAN magic packet to wake machine with specified MAC address                         |
 
 ## License
 
