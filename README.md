@@ -92,6 +92,7 @@ build/backdoor.exe
 | `download {FILE}` | Download a file from the victim's computer                                                       |
 | `upload {FILE}`   | Upload a file from server to victim's computer                                                   |
 | `wol:{MAC}`       | Send Wake on LAN magic packet to wake machine with specified MAC address                         |
+| `q`       | Quits the shell                         |
 
 ## License
 
