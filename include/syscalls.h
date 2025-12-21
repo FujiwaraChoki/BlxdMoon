@@ -15,6 +15,15 @@
 
 #include <windows.h>
 
+// MinGW compatibility - define NTSTATUS codes if missing
+#ifndef STATUS_NOT_IMPLEMENTED
+#define STATUS_NOT_IMPLEMENTED ((NTSTATUS)0xC0000002L)
+#endif
+
+#ifndef NTSTATUS
+typedef LONG NTSTATUS;
+#endif
+
 // ============================================================
 // Syscall Table Structure
 // ============================================================

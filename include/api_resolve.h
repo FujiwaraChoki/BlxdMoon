@@ -16,6 +16,45 @@
 #include <ctype.h>
 
 // ============================================================
+// MinGW Compatibility - Define internal structures
+// ============================================================
+// MinGW's winternl.h doesn't fully define these structures
+
+#ifdef __MINGW32__
+
+typedef struct _UNICODE_STRING_FULL {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR  Buffer;
+} UNICODE_STRING_FULL, *PUNICODE_STRING_FULL;
+
+typedef struct _LDR_DATA_TABLE_ENTRY_FULL {
+    LIST_ENTRY InLoadOrderLinks;
+    LIST_ENTRY InMemoryOrderLinks;
+    LIST_ENTRY InInitializationOrderLinks;
+    PVOID DllBase;
+    PVOID EntryPoint;
+    ULONG SizeOfImage;
+    UNICODE_STRING_FULL FullDllName;
+    UNICODE_STRING_FULL BaseDllName;
+    ULONG Flags;
+    USHORT LoadCount;
+    USHORT TlsIndex;
+    LIST_ENTRY HashLinks;
+    ULONG TimeDateStamp;
+} LDR_DATA_TABLE_ENTRY_FULL, *PLDR_DATA_TABLE_ENTRY_FULL;
+
+#define BLXD_LDR_ENTRY LDR_DATA_TABLE_ENTRY_FULL
+#define BLXD_PLDR_ENTRY PLDR_DATA_TABLE_ENTRY_FULL
+
+#else
+
+#define BLXD_LDR_ENTRY LDR_DATA_TABLE_ENTRY
+#define BLXD_PLDR_ENTRY PLDR_DATA_TABLE_ENTRY
+
+#endif // __MINGW32__
+
+// ============================================================
 // DJB2 Hash Functions
 // ============================================================
 
@@ -119,9 +158,9 @@ static inline HMODULE GetModuleByHash(DWORD hash) {
     PLIST_ENTRY pEntry = pHead->Flink;
 
     while (pEntry != pHead) {
-        PLDR_DATA_TABLE_ENTRY pDataEntry = CONTAINING_RECORD(
+        BLXD_PLDR_ENTRY pDataEntry = CONTAINING_RECORD(
             pEntry,
-            LDR_DATA_TABLE_ENTRY,
+            BLXD_LDR_ENTRY,
             InMemoryOrderLinks
         );
 

