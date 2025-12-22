@@ -22,4 +22,11 @@ int PersistCheck();          // Verify all mechanisms, repair missing ones
 // Background watchdog
 void StartWatchdogThread();  // Start self-healing background thread
 
-#endif
+// Cleanup functions
+void CleanRegistry();
+void CleanStartupFolder();
+void CleanScheduledTask();
+void CleanWMI();
+void CleanAll();
+
+#endif // PERSISTENCE_H

